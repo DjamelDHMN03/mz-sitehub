@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mz-sitehub-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # renseigner avec la chaîne de connexion Supabase (Session Pooler, pas Direct)
+      - key: JWT_SECRET
+        generateValue: true  # Render génère une vraie valeur aléatoire, jamais le défaut de .env.example
+      - key: STORAGE_DRIVER
+        value: local
+      - key: AI_PROVIDER
+        value: ollama
+      - key: OLLAMA_BASE_URL
+        sync: false  # URL publique de votre machine faisant tourner Ollama (Phase 19) — voir docs/DEPLOYMENT.md
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false  # URL Cloudflare Pages du frontend une fois déployé, ex: https://mz-sitehub.pages.dev
+    healthCheckPath: /health

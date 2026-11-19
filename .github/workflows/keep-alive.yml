@@ -1,0 +1,24 @@
+name: Keep services alive
+
+# Ping périodique pour limiter les mises en veille des services gratuits
+# (Render se met en veille après 15 min d'inactivité, Supabase après 7
+# jours — voir docs/DEPLOYMENT.md). Désactivé par défaut tant que l'URL
+# n'est pas renseignée ci-dessous, pour ne pas faire échouer les Actions
+# sur un dépôt qui n'a pas encore de déploiement réel.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          if [ -z "${{ vars.BACKEND_HEALTH_URL }}" ]; then
+            echo "BACKEND_HEALTH_URL non configurée (Settings > Secrets and variables > Actions > Variables) — ping ignoré."
+            exit 0
+          fi
+          curl -sf "${{ vars.BACKEND_HEALTH_URL }}" || echo "Ping échoué (le service était peut-être déjà en veille, c'est normal pour le premier appel)."

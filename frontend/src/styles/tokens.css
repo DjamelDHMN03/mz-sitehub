@@ -1,0 +1,72 @@
+/* ============================================================
+   MZ BUILDING — Design Tokens
+   Palette dérivée automatiquement du dégradé du logo MZ Building
+   (violet profond #3D2140 -> magenta #AE2858)
+   ============================================================ */
+
+:root,
+[data-theme="dark"] {
+  /* --- Marque (issue du logo) --- */
+  --mz-primary: #AE2858;        /* magenta du logo */
+  --mz-primary-hover: #C43568;
+  --mz-primary-active: #8E1F47;
+  --mz-secondary: #3D2140;      /* violet profond du logo */
+  --mz-accent: #E63E6D;         /* variante claire du dégradé, pour highlights/CTA */
+
+  /* --- Ooredoo (identité partenaire, usage ciblé : badges, liens contractuels Ooredoo) --- */
+  --mz-ooredoo-red: #ED1C24;
+
+  /* --- Neutres / surfaces (dark mode = thème par défaut) --- */
+  --mz-background: #14121A;     /* pas de noir pur : teinté violet du logo */
+  --mz-surface: #1C1A24;
+  --mz-surface-2: #241F2E;
+  --mz-card: #211E29;
+  --mz-modal: #262231;
+  --mz-input: #1A1720;
+  --mz-border: #34303F;
+  --mz-border-strong: #47414F;
+
+  /* --- Texte --- */
+  --mz-text: #F2EFF6;
+  --mz-text-muted: #A79FB0;
+  --mz-text-disabled: #6E687A;
+
+  /* --- États --- */
+  --mz-success: #2FB477;
+  --mz-warning: #E0A438;
+  --mz-danger: #E5484D;
+  --mz-info: #4C9FE8;
+
+  /* --- Statuts sites (carte + kanban) --- */
+  --mz-status-operationnel: #2FB477;  /* vert */
+  --mz-status-en-cours: #4C9FE8;      /* bleu */
+  --mz-status-attente: #E0A438;       /* orange */
+  --mz-status-bloque: #E5484D;        /* rouge */
+  --mz-status-refuse: #6E687A;        /* gris/noir */
+  --mz-status-nouveau: #B15CC9;       /* violet clair */
+
+  /* --- Rayons / ombres --- */
+  --mz-radius-sm: 6px;
+  --mz-radius-md: 10px;
+  --mz-radius-lg: 16px;
+  --mz-shadow-1: 0 1px 3px rgba(0,0,0,0.4);
+  --mz-shadow-2: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* Light mode (optionnel, activable dans les paramètres) */
+[data-theme="light"] {
+  --mz-background: #F7F5F9;
+  --mz-surface: #FFFFFF;
+  --mz-surface-2: #F0ECF3;
+  --mz-card: #FFFFFF;
+  --mz-modal: #FFFFFF;
+  --mz-input: #FFFFFF;
+  --mz-border: #E2DDE7;
+  --mz-border-strong: #CBC3D3;
+  --mz-text: #201C27;
+  --mz-text-muted: #635C6E;
+  --mz-text-disabled: #A29AAC;
+  --mz-primary: #AE2858;
+  --mz-secondary: #3D2140;
+  --mz-accent: #E63E6D;
+}

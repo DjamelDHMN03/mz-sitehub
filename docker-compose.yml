@@ -1,0 +1,65 @@
+version: "3.9"
+
+# MZ SITEHUB — environnement local, 100% gratuit / Open Source
+# Postgres + PostGIS + pgvector, Ollama (IA locale), backend FastAPI, frontend Vite.
+
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: mz_sitehub_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mzsitehub
+      POSTGRES_PASSWORD: mzsitehub_dev_password
+      POSTGRES_DB: mzsitehub
+    volumes:
+      - mz_db_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mzsitehub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mz_sitehub_ollama
+    restart: unless-stopped
+    volumes:
+      - mz_ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  backend:
+    build: ./backend
+    container_name: mz_sitehub_backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./assets:/app/assets
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: mz_sitehub_frontend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  mz_db_data:
+  mz_ollama_data:

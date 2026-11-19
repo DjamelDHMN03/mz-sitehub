@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
+markers = [
+    "integration: nécessite une vraie base Postgres (docker compose up -d db)",
+    "requires_ollama: nécessite Ollama démarré et accessible",
+]

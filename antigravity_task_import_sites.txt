@@ -1,0 +1,102 @@
+Contexte du projet :
+Je travaille sur MZ SITEHUB, une plateforme d'acquisition de sites télécoms
+(MZ Building x Ooredoo Algérie). Stack : React/TypeScript/Vite/Tailwind
+(frontend), Python/FastAPI (backend), PostgreSQL + PostGIS (base de données).
+
+Chemin du projet : C:\Users\WINDOWS 11\OneDrive\Desktop\MZ-SITEHUB-COMPLET\MZ-SITEHUB
+Backend : sous-dossier backend\, venv Python déjà présent dans backend\venv
+Lancement backend : cd backend, puis .\venv\Scripts\Activate.ps1, puis
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+Swagger : http://localhost:8000/docs
+
+OBJECTIF :
+J'ai un dossier OneDrive avec un sous-dossier par site télécom, ici :
+C:\Users\WINDOWS 11\OneDrive\Desktop\Bureau\New Sites\ALGER
+Chaque sous-dossier de site (ex: "AL2238 Kourifa El Harrache") contient :
+- des images panoramiques
+- un fichier Excel appelé "doc B" (nommé genre docb_XXXXX.xlsx)
+- un PDF d'APS
+
+Je veux importer automatiquement les données de tous les "doc B" dans la
+base MZ Sitehub via l'API, sans ressaisie manuelle.
+
+STRUCTURE DU FICHIER "doc B" (Excel, feuille "Feuil1", même mise en page
+sur tous les fichiers) -- mapping cellule -> donnée :
+- A5 : Site ID (ex: AI4347)
+- F5 : Candidat
+- H5 : Nom du site
+- B9 : Région
+- B10 : Wilaya
+- B11 : Daïra
+- B12 : Commune
+- H9 : Négociateur
+- H10 : N° portable négociateur
+- H11 : Société
+- H12 : Date de la visite
+- A17 : Adresse du candidat
+- A20 : Nom du propriétaire
+- K25 : Longitude WGS84
+- K26 : Latitude WGS84
+- A47 : Type de site (ex: GF)
+- A50 : Type d'environnement (ex: URBAIN)
+- A53 : Sécurité de la zone (ex: OUI)
+- Zone A23-A33 (colonne D) : Type de propriété, coché par un "x" dans la
+  colonne C ou D à côté du bon libellé (Propriétaire unique, Co-propriété
+  avec/sans syndic, Indivision, Entreprise étatique/privée, Contrat cadre,
+  APC, Domaines, Forêts, Autre)
+- Zone E84-E86 : possibilité connexion réseau Sonelgaz, coché par un "X"
+  en colonne F à côté du bon libellé (<25m / 25-600m / >600m)
+
+SCHÉMA API CIBLE (POST /sites, schéma SiteCreate d'après Swagger) :
+- name (string) <- Nom du site
+- code (string, 2-32 car., requis) <- Site ID
+- wilaya_id (int) <- doit être résolu depuis le nom de wilaya via un
+  endpoint de référence (GET /wilayas ou équivalent, à découvrir dans
+  Swagger)
+- commune_id (int) <- pareil via GET /communes
+- address (string) <- Adresse du candidat
+- latitude / longitude (float)
+- site_type (string) <- Type de site
+- owner_name (string) <- Nom du propriétaire
+- organisme (string) <- Société
+- status_id (int, requis) <- à déterminer via GET /statuses (prendre un
+  statut "Nouveau" ou "En prospection" par défaut, à me confirmer si
+  ambigu)
+- priority (int 1-3, optionnel)
+- next_action, observation (string, optionnels)
+- is_favorite (bool, optionnel)
+- custom_fields (objet JSON libre) <- mets ici TOUT ce qui n'a pas de
+  colonne dédiée : Candidat, Région, Daïra, Négociateur, N° portable,
+  Date de visite, Type d'environnement, Sécurité de la zone, Type de
+  propriété, connexion Sonelgaz, etc.
+
+CE QUE JE VEUX QUE TU FASSES :
+1. Démarre le backend si besoin et explore le Swagger (localhost:8000/docs)
+   pour trouver les vrais chemins des endpoints d'authentification, de
+   wilayas, communes et statuts (les noms exacts peuvent différer de mes
+   suppositions ci-dessus).
+2. Écris un script Python qui :
+   a. Se connecte à l'API (login) pour récupérer un token
+   b. Récupère les tables de référence (wilayas, communes, statuts) et
+      construit un mapping nom -> id (attention aux accents/majuscules,
+      fais un matching insensible à la casse et aux accents)
+   c. Parcourt tous les sous-dossiers de
+      "Bureau\New Sites\ALGER", trouve le fichier "doc B" (celui qui
+      commence par "docb_") dans chaque dossier
+   d. Extrait les champs selon le mapping de cellules ci-dessus
+   e. Construit le payload SiteCreate correspondant
+   f. Fait un premier passage en mode "dry-run" : affiche/exporte dans un
+      CSV récapitulatif tous les sites qui seraient créés, SANS les
+      envoyer à l'API, pour que je valide avant import réel
+   g. Une fois validé, une option --confirm envoie réellement les POST
+      /sites à l'API, avec gestion des erreurs (doublons via 'code',
+      champs manquants, wilaya/commune introuvable) et affiche un résumé
+      (réussis / échecs / raisons)
+3. Gère le cas où le nom de wilaya/commune dans le doc B ne correspond à
+   rien dans la base (log l'erreur et le site concerné, ne bloque pas les
+   autres imports)
+4. Montre-moi d'abord le résultat du dry-run avant tout import réel
+
+Vas-y étape par étape, montre-moi ce que tu trouves à chaque étape
+(endpoints découverts, structure des tables de référence) avant de coder
+le script complet.

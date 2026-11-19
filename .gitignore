@@ -1,0 +1,9 @@
+.env
+venv/
+node_modules/
+__pycache__/
+*.db
+dist/
+inspection_*
+rapport_import_suivi.csv
+SUIVI_NETTOYE.xlsx
