@@ -205,10 +205,9 @@ export default function UsersPage() {
                 </Td>
                 <Td>{user.email}</Td>
                 <Td>
-                  <Badge
-                    label={user.role_code}
-                    color={ROLE_COLORS[user.role_code] ?? "#6E687A"}
-                  />
+                  <Badge color={ROLE_COLORS[user.role_code] ?? "#6E687A"}>
+                    {user.role_code}
+                  </Badge>
                 </Td>
                 <Td>
                   {user.is_active ? (
