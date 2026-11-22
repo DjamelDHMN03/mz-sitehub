@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
@@ -62,14 +62,16 @@ async def negociateurs_stats(
     for user_id, code, n in rows:
         per_user[user_id][code] += n
 
+    signed_sites = select(Contract.site_id).where(
+        Contract.deleted_at.is_(None), Contract.date_signed.is_not(None)
+    )
     signed_rows = (
         await db.execute(
-            select(Site.responsible_user_id, func.count(Contract.id))
-            .join(Site, Site.id == Contract.site_id)
+            select(Site.responsible_user_id, func.count(Site.id))
+            .join(SiteStatus, Site.status_id == SiteStatus.id)
             .where(
                 Site.deleted_at.is_(None),
-                Contract.deleted_at.is_(None),
-                Contract.date_signed.is_not(None),
+                or_(SiteStatus.code.in_(STATUS_GROUPS["signes"]), Site.id.in_(signed_sites)),
             )
             .group_by(Site.responsible_user_id)
         )
