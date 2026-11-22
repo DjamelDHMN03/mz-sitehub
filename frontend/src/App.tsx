@@ -18,6 +18,7 @@ import ImportExcelPage from "@/pages/ImportExcelPage";
 import RapportsPage from "@/pages/RapportsPage";
 import HistoriquePage from "@/pages/HistoriquePage";
 import AssistantPage from "@/pages/AssistantPage";
+import ChatPage from "@/pages/ChatPage";
 import TrashPage from "@/pages/TrashPage";
 import UsersPage from "@/pages/UsersPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/rapports" element={<RapportsPage />} />
             <Route path="/historique" element={<HistoriquePage />} />
             <Route path="/assistant" element={<AssistantPage />} />
+          <Route path="/equipe" element={<ChatPage />} />
             <Route path="/corbeille" element={<TrashPage />} />
             <Route path="/utilisateurs" element={<UsersPage />} />
             <Route path="/parametres" element={<SettingsPage />} />

@@ -19,6 +19,7 @@ const TITLES: Record<string, string> = {
   "/rapports": "Rapports",
   "/historique": "Historique",
   "/assistant": "MZ Assistant",
+  "/equipe": "\u00c9quipe",
   "/corbeille": "Corbeille",
   "/utilisateurs": "Utilisateurs",
   "/parametres": "Paramètres",

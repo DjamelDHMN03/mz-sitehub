@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MapPin, Map, Users, FileText, ClipboardList,
   Ruler, FileSignature, CheckSquare, Calendar, BarChart3, Bot,
-  History, Trash2, UserCog, Settings,
+  History, Trash2, UserCog, Settings, MessageCircle,
 } from "lucide-react";
 import clsx from "clsx";
 import { NegociateursStats } from "@/components/NegociateursStats";
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { to: "/calendrier", label: "Calendrier", icon: Calendar },
   { to: "/rapports", label: "Rapports", icon: BarChart3 },
   { to: "/assistant", label: "MZ Assistant", icon: Bot },
+  { to: "/equipe", label: "\u00c9quipe", icon: MessageCircle },
   { to: "/historique", label: "Historique", icon: History },
   { to: "/corbeille", label: "Corbeille", icon: Trash2 },
   { to: "/utilisateurs", label: "Utilisateurs", icon: UserCog },
