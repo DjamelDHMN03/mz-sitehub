@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.assistant import answer_question
-from app.ai.intent import INTENT_ADD_CONTACT, parse_intent
+from app.ai.intent import INTENT_ADD_CONTACT, INTENT_UNKNOWN, parse_intent
+from app.ai.llm_assistant import AssistantUnavailable, HistoryItem, ask_business_assistant
 from app.core.audit import log_audit
 from app.core.deps import get_current_user, require_permission
 from app.db.session import get_db
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 class ChatRequest(BaseModel):
     message: str
     conversation_id: uuid.UUID | None = None
+    history: list[HistoryItem] = []
 
 
 class PendingAction(BaseModel):
@@ -54,7 +56,7 @@ async def chat(
 
     if payload.conversation_id:
         conversation = await db.get(AIConversation, payload.conversation_id)
-        if conversation is None:
+        if conversation is None or conversation.user_id != current_user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")
     else:
         conversation = AIConversation(user_id=current_user.id, title=payload.message[:80], created_at=now)
@@ -80,6 +82,16 @@ async def chat(
         )
 
     result = await answer_question(db, payload.message)
+    if result.intent_type == INTENT_UNKNOWN:
+        try:
+            llm_text = await ask_business_assistant(db, current_user, payload.message, payload.history)
+        except AssistantUnavailable:
+            llm_text = (
+                "L'assistant IA est momentan\u00e9ment indisponible. Les commandes habituelles "
+                "restent disponibles : \"sites bloqu\u00e9s\", \"r\u00e9sume AL6328\", \"contrats qui expirent bient\u00f4t\"."
+            )
+        if llm_text:
+            result.text = llm_text
     db.add(AIMessage(conversation_id=conversation.id, role="assistant", content=result.text, created_at=now))
     await db.commit()
 
@@ -133,7 +145,11 @@ async def get_conversation_messages(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
-    result = await db.execute(
+    owner_id = (
+        await db.execute(select(AIConversation.user_id).where(AIConversation.id == conversation_id))
+    ).scalar_one_or_none()
+    if owner_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")    result = await db.execute(
         select(AIMessage).where(AIMessage.conversation_id == conversation_id).order_by(AIMessage.created_at)
     )
     return [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()} for m in result.scalars().all()]

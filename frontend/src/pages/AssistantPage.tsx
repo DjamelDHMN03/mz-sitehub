@@ -19,6 +19,7 @@ interface ChatMessage {
 }
 
 const QUICK_COMMANDS = [
+  "Fais le point sur l\u2019avancement", "Quelles priorit\u00e9s cette semaine ?",
   "Sites bloqués", "Contrats qui expirent bientôt", "Sites sans GPS",
   "Résume AL6328", "Sites à relancer",
 ];
@@ -52,6 +53,7 @@ export default function AssistantPage() {
       const { data } = await api.post("/assistant/chat", {
         message: text,
         conversation_id: conversationId,
+        history: messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
       });
       setConversationId(data.conversation_id);
 
