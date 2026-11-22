@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Table, Thead, Th, Tr, Td } from "@/components/Table";
 import { StatusBadge } from "@/components/Badge";
@@ -25,6 +25,8 @@ function errorMessage(err: unknown): string {
 }
 
 export default function SitesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const responsibleId = searchParams.get("responsable");
   const [data, setData] = useState<SiteListResponse | null>(null);
   const [statuses, setStatuses] = useState<Record<number, SiteStatusOut>>({});
   const [search, setSearch] = useState("");
@@ -50,14 +52,14 @@ export default function SitesPage() {
     setError(null);
     const timeout = setTimeout(() => {
       api
-        .get<SiteListResponse>("/sites", { params: { q: search || undefined, page_size: 50 } })
+        .get<SiteListResponse>("/sites", { params: { q: search || undefined, page_size: 50, responsible_user_id: responsibleId || undefined } })
         .then(({ data }) => setData(data))
         .catch(() => setError("Impossible de charger les sites. Le backend est-il démarré ?"))
         .finally(() => setIsLoading(false));
     }, 300); // debounce recherche
 
     return () => clearTimeout(timeout);
-  }, [search, reloadKey]);
+  }, [search, reloadKey, responsibleId]);
 
   const statusOptions = Object.values(statuses)
     .sort((a, b) => a.id - b.id)
@@ -66,6 +68,7 @@ export default function SitesPage() {
   function handleSaved() {
     setFormTarget(null);
     setReloadKey((k) => k + 1);
+    window.dispatchEvent(new Event("mz:sites-changed"));
   }
 
   async function confirmDelete() {
@@ -76,6 +79,7 @@ export default function SitesPage() {
       await api.delete(`/sites/${deleteTarget.id}`);
       setDeleteTarget(null);
       setReloadKey((k) => k + 1);
+    window.dispatchEvent(new Event("mz:sites-changed"));
     } catch (err) {
       setDeleteError(errorMessage(err));
     } finally {
@@ -105,6 +109,14 @@ export default function SitesPage() {
         </Link>
       </div>
 
+            {responsibleId && (
+        <p className="text-sm text-mz-text-muted">
+          {"Filtre actif : sites d\u2019un seul n\u00e9gociateur. "}
+          <button type="button" onClick={() => setSearchParams({})} className="underline">
+            Retirer le filtre
+          </button>
+        </p>
+      )}
       {error && <p className="text-sm text-mz-danger">{error}</p>}
       {isLoading && !data && <p className="text-sm text-mz-text-muted">Chargement...</p>}
 

@@ -215,6 +215,7 @@ export default function CartePage() {
           onSaved={() => {
             setEditId(null);
             setReloadKey((k) => k + 1);
+            window.dispatchEvent(new Event("mz:sites-changed"));
           }}
         />
       )}

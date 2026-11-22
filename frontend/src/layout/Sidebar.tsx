@@ -5,6 +5,7 @@ import {
   History, Trash2, UserCog, Settings,
 } from "lucide-react";
 import clsx from "clsx";
+import { NegociateursStats } from "@/components/NegociateursStats";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -56,6 +57,8 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <NegociateursStats />
 
       <div className="flex items-center gap-2 border-t border-mz-border px-5 py-3">
         <img src="/logo-ooredoo.png" alt="Ooredoo" className="h-5 w-auto opacity-80" />
