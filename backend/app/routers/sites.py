@@ -16,7 +16,7 @@ from app.core.audit import log_audit
 from app.core.deps import get_current_user, require_permission
 from app.db.session import get_db
 from app.models.site import Site
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.site import (
     CodeChangeConfirm,
     SiteCreate,
@@ -109,12 +109,31 @@ async def _assert_code_unique(db: AsyncSession, code: str, exclude_site_id: uuid
 # ------------------------------------------------------------------
 # CRUD
 # ------------------------------------------------------------------
+async def _site_write_scope(db: AsyncSession, current_user: User) -> str:
+    """'all' = ecriture sur tous les sites ; 'own' = uniquement ses propres sites."""
+    role = (await db.execute(select(Role).where(Role.id == current_user.role_id))).scalar_one()
+    perms = role.permissions or {}
+    if perms.get("all") is True:
+        return "all"
+    granted = perms.get("sites") or perms.get("*")
+    if granted == "write":
+        return "all"
+    if granted == "write_own":
+        return "own"
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Permission insuffisante sur 'sites' (requis: write)",
+    )
+
 @router.post("", response_model=SiteOut, status_code=status.HTTP_201_CREATED)
 async def create_site(
     payload: SiteCreate,
-    current_user: User = Depends(require_permission("sites", "write")),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SiteOut:
+    scope = await _site_write_scope(db, current_user)
+    if scope == "own":
+        payload.responsible_user_id = current_user.id
     await _assert_code_unique(db, payload.code)
 
     now = datetime.now(timezone.utc)
@@ -235,12 +254,23 @@ async def get_site(
 async def update_site(
     site_id: uuid.UUID,
     payload: SiteUpdate,
-    current_user: User = Depends(require_permission("sites", "write")),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SiteOut:
     site = await _get_site_or_404(db, site_id)
+    scope = await _site_write_scope(db, current_user)
     changes = payload.model_dump(exclude_unset=True)
-
+    if scope == "own":
+        if site.responsible_user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez modifier que vos propres sites",
+            )
+        if "responsible_user_id" in changes and changes["responsible_user_id"] != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez pas reassigner un de vos sites",
+            )
     # Le changement de code suit une route dédiée avec confirmation (section 17)
     if "code" in changes and changes["code"] != site.code:
         raise HTTPException(
