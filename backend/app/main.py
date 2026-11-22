@@ -10,7 +10,7 @@ from app.core.config import get_settings
 from app.routers import (
     auth, sites, site_status, dashboard, map_layers, contacts, documents,
     docb_aps, contracts, tasks, share, excel_import, reports, audit,
-    assistant, rag, geography, ooredoo_centre,
+    assistant, rag, geography, ooredoo_centre, users,
 )
 
 logger = logging.getLogger("mz_building")
@@ -78,6 +78,7 @@ app.include_router(assistant.router)
 app.include_router(rag.router)
 app.include_router(geography.router)
 app.include_router(ooredoo_centre.router)
+app.include_router(users.router)
 
 
 @app.get("/health", tags=["system"])

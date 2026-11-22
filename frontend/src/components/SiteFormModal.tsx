@@ -9,6 +9,23 @@ export interface StatusOption {
   label: string;
 }
 
+interface WilayaOption {
+  id: number;
+  name: string;
+}
+
+interface CommuneOption {
+  id: number;
+  wilaya_id: number;
+  daira: string | null;
+  name: string;
+}
+
+interface UserOption {
+  id: string;
+  full_name: string;
+}
+
 interface Props {
   siteId: string | null; // null = création, sinon modification
   statuses: StatusOption[];
@@ -21,6 +38,10 @@ interface FormState {
   name: string;
   status_id: string;
   priority: string;
+  wilaya_id: string;
+  commune_id: string;
+  responsible_user_id: string;
+  secondary_responsible_user_id: string;
   address: string;
   latitude: string;
   longitude: string;
@@ -36,6 +57,10 @@ interface SiteFull {
   name: string | null;
   status_id: number;
   priority: number;
+  wilaya_id: number | null;
+  commune_id: number | null;
+  responsible_user_id: string | null;
+  secondary_responsible_user_id: string | null;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -51,6 +76,10 @@ const EMPTY_FORM: FormState = {
   name: "",
   status_id: "",
   priority: "2",
+  wilaya_id: "",
+  commune_id: "",
+  responsible_user_id: "",
+  secondary_responsible_user_id: "",
   address: "",
   latitude: "",
   longitude: "",
@@ -92,6 +121,33 @@ export default function SiteFormModal({ siteId, statuses, onClose, onSaved }: Pr
   const [isLoading, setIsLoading] = useState(isEdit);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wilayas, setWilayas] = useState<WilayaOption[]>([]);
+  const [communes, setCommunes] = useState<CommuneOption[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+
+  // Listes de choix (non bloquant si l'une échoue)
+  useEffect(() => {
+    api
+      .get<WilayaOption[]>("/geography/wilayas")
+      .then(({ data }) => setWilayas(data))
+      .catch(() => setWilayas([]));
+    api
+      .get<UserOption[]>("/users/options")
+      .then(({ data }) => setUsers(data))
+      .catch(() => setUsers([]));
+  }, []);
+
+  // Communes de la wilaya choisie
+  useEffect(() => {
+    if (!form.wilaya_id) {
+      setCommunes([]);
+      return;
+    }
+    api
+      .get<CommuneOption[]>("/geography/communes", { params: { wilaya_id: Number(form.wilaya_id) } })
+      .then(({ data }) => setCommunes(data))
+      .catch(() => setCommunes([]));
+  }, [form.wilaya_id]);
 
   // Modification : on recharge le site complet pour pré-remplir le formulaire
   useEffect(() => {
@@ -105,6 +161,10 @@ export default function SiteFormModal({ siteId, statuses, onClose, onSaved }: Pr
           name: data.name ?? "",
           status_id: String(data.status_id),
           priority: String(data.priority),
+          wilaya_id: data.wilaya_id !== null ? String(data.wilaya_id) : "",
+          commune_id: data.commune_id !== null ? String(data.commune_id) : "",
+          responsible_user_id: data.responsible_user_id ?? "",
+          secondary_responsible_user_id: data.secondary_responsible_user_id ?? "",
           address: data.address ?? "",
           latitude: data.latitude !== null ? String(data.latitude) : "",
           longitude: data.longitude !== null ? String(data.longitude) : "",
@@ -135,11 +195,16 @@ export default function SiteFormModal({ siteId, statuses, onClose, onSaved }: Pr
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, isSaving]);
-
   const set =
     (key: keyof FormState) =>
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // Changer de wilaya remet la commune à zéro
+  function onWilayaChange(e: ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, wilaya_id: value, commune_id: "" }));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -173,6 +238,10 @@ export default function SiteFormModal({ siteId, statuses, onClose, onSaved }: Pr
       name: toTextOrNull(form.name),
       status_id: Number(form.status_id),
       priority: Number(form.priority),
+      wilaya_id: form.wilaya_id ? Number(form.wilaya_id) : null,
+      commune_id: form.commune_id ? Number(form.commune_id) : null,
+      responsible_user_id: form.responsible_user_id || null,
+      secondary_responsible_user_id: form.secondary_responsible_user_id || null,
       address: toTextOrNull(form.address),
       latitude: lat,
       longitude: lon,
@@ -283,6 +352,86 @@ export default function SiteFormModal({ siteId, statuses, onClose, onSaved }: Pr
                   <option value="3">3 - Basse</option>
                 </select>
               </div>
+              <div>
+                <label htmlFor="site-wilaya" className={LABEL_CLASS}>
+                  Wilaya
+                </label>
+                <select
+                  id="site-wilaya"
+                  className={INPUT_CLASS}
+                  value={form.wilaya_id}
+                  onChange={onWilayaChange}
+                >
+                  <option value="">— Non renseignée —</option>
+                  {wilayas.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.id} - {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="site-commune" className={LABEL_CLASS}>
+                  Commune
+                </label>
+                <select
+                  id="site-commune"
+                  className={INPUT_CLASS}
+                  value={form.commune_id}
+                  onChange={set("commune_id")}
+                  disabled={!form.wilaya_id || communes.length === 0}
+                >
+                  <option value="">— Non renseignée —</option>
+                  {communes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {form.wilaya_id && communes.length === 0 && (
+                  <p className="mt-1 text-xs text-mz-text-muted">
+                    Aucune commune enregistrée pour cette wilaya pour le moment.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="site-resp" className={LABEL_CLASS}>
+                  Responsable (négociateur)
+                </label>
+                <select
+                  id="site-resp"
+                  className={INPUT_CLASS}
+                  value={form.responsible_user_id}
+                  onChange={set("responsible_user_id")}
+                >
+                  <option value="">— Non assigné —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="site-resp2" className={LABEL_CLASS}>
+                  Responsable secondaire
+                </label>
+                <select
+                  id="site-resp2"
+                  className={INPUT_CLASS}
+                  value={form.secondary_responsible_user_id}
+                  onChange={set("secondary_responsible_user_id")}
+                >
+                  <option value="">— Aucun —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="sm:col-span-2">
                 <label htmlFor="site-address" className={LABEL_CLASS}>
                   Adresse
