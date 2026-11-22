@@ -96,7 +96,7 @@ async def negociateurs_stats(
     result: list[NegociateurStats] = []
     for u in users:
         item = build(u.id, u.full_name)
-        if u.id == current_user.id or (sees_all and item.assignes > 0):
+        if u.id == current_user.id or sees_all:
             result.append(item)
     if sees_all and None in per_user:
         result.append(build(None, "Non assign\u00e9"))
