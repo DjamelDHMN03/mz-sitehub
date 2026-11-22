@@ -5,6 +5,7 @@ import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SitesPage from "@/pages/SitesPage";
 import CartePage from "@/pages/CartePage";
+import NegociateursPage from "@/pages/NegociateursPage";
 import ImportCartePage from "@/pages/ImportCartePage";
 import ContactsPage from "@/pages/ContactsPage";
 import DocumentsPage from "@/pages/DocumentsPage";
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/sites" element={<SitesPage />} />
             <Route path="/sites/:id" element={<SiteDetailPage />} />
             <Route path="/carte" element={<CartePage />} />
+          <Route path="/negociateurs" element={<NegociateursPage />} />
             <Route path="/carte/importer" element={<ImportCartePage />} />
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />

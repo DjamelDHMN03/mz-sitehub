@@ -2,15 +2,15 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MapPin, Map, Users, FileText, ClipboardList,
   Ruler, FileSignature, CheckSquare, Calendar, BarChart3, Bot,
-  History, Trash2, UserCog, Settings, MessageCircle,
+  History, Trash2, UserCog, Settings, UserCheck, MessageCircle,
 } from "lucide-react";
 import clsx from "clsx";
-import { NegociateursStats } from "@/components/NegociateursStats";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/sites", label: "Sites", icon: MapPin },
   { to: "/carte", label: "Carte", icon: Map },
+  { to: "/negociateurs", label: "N\u00e9gociateurs", icon: UserCheck },
   { to: "/contacts", label: "Contacts", icon: Users },
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/doc-b", label: "Doc B", icon: ClipboardList },
@@ -58,8 +58,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      <NegociateursStats />
 
       <div className="flex items-center gap-2 border-t border-mz-border px-5 py-3">
         <img src="/logo-ooredoo.png" alt="Ooredoo" className="h-5 w-auto opacity-80" />
