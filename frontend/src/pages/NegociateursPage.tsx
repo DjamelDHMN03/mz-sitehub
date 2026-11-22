@@ -11,6 +11,7 @@ interface NegociateurStats {
   negociation: number;
   valides: number;
   bloques: number;
+  contrats_signes: number;
 }
 
 const REFRESH_MS = 60000;
@@ -54,6 +55,7 @@ export default function NegociateursPage() {
           <Thead>
             <Tr>
               <Th>{"N\u00e9gociateur"}</Th>
+              <Th>{"Contrats sign\u00e9s"}</Th>
               <Th>{"Assign\u00e9s"}</Th>
               <Th>En cours</Th>
               <Th>{"N\u00e9gociation"}</Th>
@@ -72,6 +74,7 @@ export default function NegociateursPage() {
                     r.full_name
                   )}
                 </Td>
+                <Td className="text-base font-bold text-mz-primary">{r.contrats_signes}</Td>
                 <Td>{r.assignes}</Td>
                 <Td>{r.en_cours}</Td>
                 <Td>{r.negociation}</Td>

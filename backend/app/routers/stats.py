@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.site import Site, SiteStatus
+from app.models.tracking import Contract
 from app.models.user import Role, User
 from app.routers.dashboard import STATUS_GROUPS
 
@@ -35,6 +36,7 @@ class NegociateurStats(BaseModel):
     negociation: int
     valides: int
     bloques: int
+    contrats_signes: int
 
 
 @router.get("/negociateurs", response_model=list[NegociateurStats])
@@ -60,11 +62,25 @@ async def negociateurs_stats(
     for user_id, code, n in rows:
         per_user[user_id][code] += n
 
+    signed_rows = (
+        await db.execute(
+            select(Site.responsible_user_id, func.count(Contract.id))
+            .join(Site, Site.id == Contract.site_id)
+            .where(
+                Site.deleted_at.is_(None),
+                Contract.deleted_at.is_(None),
+                Contract.date_signed.is_not(None),
+            )
+            .group_by(Site.responsible_user_id)
+        )
+    ).all()
+    signed_by_user = {uid: n for uid, n in signed_rows}
+
     def build(user_id, name: str) -> NegociateurStats:
         counts = per_user.get(user_id, {})
         data = {k: sum(counts.get(c, 0) for c in codes) for k, codes in CATEGORIES.items()}
         return NegociateurStats(
-            user_id=user_id, full_name=name, assignes=sum(counts.values()), **data
+            user_id=user_id, full_name=name, assignes=sum(counts.values()), contrats_signes=signed_by_user.get(user_id, 0), **data
         )
 
     users = (
