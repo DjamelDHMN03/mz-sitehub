@@ -1,4 +1,4 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MapPin, Map, Users, FileText, ClipboardList,
   Ruler, FileSignature, CheckSquare, Calendar, BarChart3, Zap, Bot,
@@ -25,7 +25,7 @@ const NAV_ITEMS = [
   { to: "/historique", label: "Historique", icon: History },
   { to: "/corbeille", label: "Corbeille", icon: Trash2 },
   { to: "/utilisateurs", label: "Utilisateurs", icon: UserCog },
-  { to: "/parametres", label: "ParamÃ¨tres", icon: Settings },
+  { to: "/parametres", label: "Paramètres", icon: Settings },
 ] as const;
 
 export function Sidebar() {
@@ -47,9 +47,9 @@ export function Sidebar() {
             end={to === "/"}
             className={({ isActive }) =>
               clsx(
-                "flex items-center gap-3 rounded-mz-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-mz-md px-3 py-2.5 text-sm transition-colors duration-150",
                 isActive
-                  ? "bg-mz-primary/15 text-mz-primary font-medium"
+                  ? "bg-mz-primary/10 text-mz-text font-medium ring-1 ring-inset ring-mz-primary/25"
                   : "text-mz-text-muted hover:bg-mz-surface-2 hover:text-mz-text"
               )
             }
@@ -62,7 +62,7 @@ export function Sidebar() {
 
       <div className="flex items-center gap-2 border-t border-mz-border px-5 py-3">
         <img src="/logo-ooredoo.png" alt="Ooredoo" className="h-5 w-auto opacity-80" />
-        <span className="text-xs text-mz-text-disabled">Partenaire rÃ©seau</span>
+        <span className="text-xs text-mz-text-disabled">Partenaire réseau</span>
       </div>
     </aside>
   );
