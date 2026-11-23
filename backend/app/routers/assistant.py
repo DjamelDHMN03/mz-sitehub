@@ -1,4 +1,4 @@
-"""
+﻿"""
 Routeur MZ ASSISTANT (sections 61, 69-71).
 """
 import uuid
@@ -65,8 +65,8 @@ async def chat(
 
     db.add(AIMessage(conversation_id=conversation.id, role="user", content=payload.message, created_at=now))
 
-    # Section 69 : une action détectée n'est JAMAIS exécutée directement ici —
-    # elle est renvoyée au frontend pour confirmation explicite (bouton CONFIRMER).
+    # Section 69 : une action dÃ©tectÃ©e n'est JAMAIS exÃ©cutÃ©e directement ici â€”
+    # elle est renvoyÃ©e au frontend pour confirmation explicite (bouton CONFIRMER).
     intent = parse_intent(payload.message)
     if intent.type == INTENT_ADD_CONTACT:
         answer_text = (
@@ -104,11 +104,11 @@ async def confirm_action(
     current_user: User = Depends(require_permission("contacts", "write_own")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Exécute réellement une action seulement après confirmation explicite
-    de l'utilisateur (section 69 : "Aucune modification de données sans
+    """ExÃ©cute rÃ©ellement une action seulement aprÃ¨s confirmation explicite
+    de l'utilisateur (section 69 : "Aucune modification de donnÃ©es sans
     confirmation explicite")."""
     if payload.action != INTENT_ADD_CONTACT:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Action non supportée : {payload.action}")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Action non supportÃ©e : {payload.action}")
 
     code = payload.params.get("code")
     name = payload.params.get("name", "")
@@ -136,7 +136,7 @@ async def confirm_action(
     )
     await db.commit()
 
-    return {"status": "confirmé", "contact_id": str(contact.id)}
+    return {"status": "confirmÃ©", "contact_id": str(contact.id)}
 
 
 @router.get("/conversations/{conversation_id}/messages")
@@ -149,7 +149,8 @@ async def get_conversation_messages(
         await db.execute(select(AIConversation.user_id).where(AIConversation.id == conversation_id))
     ).scalar_one_or_none()
     if owner_id != current_user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")    result = await db.execute(
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")
+    result = await db.execute(
         select(AIMessage).where(AIMessage.conversation_id == conversation_id).order_by(AIMessage.created_at)
     )
     return [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()} for m in result.scalars().all()]
@@ -160,8 +161,8 @@ async def get_briefing(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Section 71 : BRIEFING ACQUISITION — réutilise les mêmes tools que le
-    chat, pas de nouvelle logique de requête dupliquée."""
+    """Section 71 : BRIEFING ACQUISITION â€” rÃ©utilise les mÃªmes tools que le
+    chat, pas de nouvelle logique de requÃªte dupliquÃ©e."""
     from app.ai import tools as ai_tools
 
     bloques = await ai_tools.tool_list_sites_by_status(db, "BLOQUE")
@@ -173,3 +174,4 @@ async def get_briefing(
         "sites_negociation": negociation,
         "contrats_a_expirer": contrats_expirant,
     }
+
