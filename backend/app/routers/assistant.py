@@ -149,7 +149,8 @@ async def get_conversation_messages(
         await db.execute(select(AIConversation.user_id).where(AIConversation.id == conversation_id))
     ).scalar_one_or_none()
     if owner_id != current_user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")    result = await db.execute(
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation introuvable")
+    result = await db.execute(
         select(AIMessage).where(AIMessage.conversation_id == conversation_id).order_by(AIMessage.created_at)
     )
     return [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()} for m in result.scalars().all()]
