@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import { MainLayout } from "@/layout/MainLayout";
 import LoginPage from "@/pages/LoginPage";
@@ -11,6 +11,7 @@ import ContactsPage from "@/pages/ContactsPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import DocBApsPage from "@/pages/DocBApsPage";
 import ContractsPage from "@/pages/ContractsPage";
+import EnergiePage from "@/pages/EnergiePage";
 import ActionsPage from "@/pages/ActionsPage";
 import KanbanPage from "@/pages/KanbanPage";
 import CalendrierPage from "@/pages/CalendrierPage";
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/doc-b" element={<DocBApsPage />} />
             <Route path="/aps" element={<DocBApsPage />} />
             <Route path="/contrats" element={<ContractsPage />} />
+            <Route path="/energie" element={<EnergiePage />} />
             <Route path="/actions" element={<ActionsPage />} />
             <Route path="/kanban" element={<KanbanPage />} />
             <Route path="/calendrier" element={<CalendrierPage />} />
@@ -56,11 +58,13 @@ export default function App() {
             <Route path="/utilisateurs" element={<UsersPage />} />
             <Route path="/parametres" element={<SettingsPage />} />
             {/* Les autres routes de la Sidebar (carte, contacts, documents...)
-                seront ajoutées phase par phase, au fur et à mesure de leur
-                construction — pas de pages vides créées à l'avance. */}
+                seront ajoutÃ©es phase par phase, au fur et Ã  mesure de leur
+                construction â€” pas de pages vides crÃ©Ã©es Ã  l'avance. */}
           </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>
   );
 }
+
+

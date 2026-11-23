@@ -1,7 +1,7 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MapPin, Map, Users, FileText, ClipboardList,
-  Ruler, FileSignature, CheckSquare, Calendar, BarChart3, Bot,
+  Ruler, FileSignature, CheckSquare, Calendar, BarChart3, Zap, Bot,
   History, Trash2, UserCog, Settings, UserCheck, MessageCircle,
 } from "lucide-react";
 import clsx from "clsx";
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { to: "/doc-b", label: "Doc B", icon: ClipboardList },
   { to: "/aps", label: "APS / Plans", icon: Ruler },
   { to: "/contrats", label: "Contrats", icon: FileSignature },
+  { to: "/energie", label: "Énergie", icon: Zap },
   { to: "/actions", label: "Actions", icon: CheckSquare },
   { to: "/calendrier", label: "Calendrier", icon: Calendar },
   { to: "/rapports", label: "Rapports", icon: BarChart3 },
@@ -24,7 +25,7 @@ const NAV_ITEMS = [
   { to: "/historique", label: "Historique", icon: History },
   { to: "/corbeille", label: "Corbeille", icon: Trash2 },
   { to: "/utilisateurs", label: "Utilisateurs", icon: UserCog },
-  { to: "/parametres", label: "Paramètres", icon: Settings },
+  { to: "/parametres", label: "ParamÃ¨tres", icon: Settings },
 ] as const;
 
 export function Sidebar() {
@@ -61,8 +62,9 @@ export function Sidebar() {
 
       <div className="flex items-center gap-2 border-t border-mz-border px-5 py-3">
         <img src="/logo-ooredoo.png" alt="Ooredoo" className="h-5 w-auto opacity-80" />
-        <span className="text-xs text-mz-text-disabled">Partenaire réseau</span>
+        <span className="text-xs text-mz-text-disabled">Partenaire rÃ©seau</span>
       </div>
     </aside>
   );
 }
+

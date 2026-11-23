@@ -11,6 +11,7 @@ from app.routers import (
     auth, sites, site_status, dashboard, map_layers, contacts, documents,
     docb_aps, contracts, tasks, share, excel_import, reports, audit,
     assistant, rag, geography, ooredoo_centre, users, stats, chat,
+    site_visits,
 )
 
 logger = logging.getLogger("mz_building")
@@ -81,6 +82,7 @@ app.include_router(ooredoo_centre.router)
 app.include_router(users.router)
 app.include_router(stats.router)
 app.include_router(chat.router)
+app.include_router(site_visits.router)
 
 
 @app.get("/health", tags=["system"])

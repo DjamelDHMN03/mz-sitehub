@@ -1,0 +1,9 @@
+MZ SITEHUB - Calendrier : TSS et CCT
+Contenu (les chemins sont ceux du projet) :
+  sql/create_site_visits.sql                      -> a lancer dans Supabase (SQL Editor)
+  backend/app/models/site_visit.py                -> nouveau
+  backend/app/schemas/site_visit.py               -> nouveau
+  backend/app/routers/site_visits.py              -> nouveau
+  backend/app/main.py                             -> modifie (2 lignes ajoutees)
+  frontend/src/components/SiteVisitModal.tsx      -> nouveau
+  frontend/src/pages/CalendrierPage.tsx           -> remplace l'ancienne page

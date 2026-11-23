@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
-from routers import geospatial
+from routers import geospatial, energie
 import models
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 
 # Intégration du routeur geospatial
 app.include_router(geospatial.router)
+app.include_router(energie.router)
 
 @app.get("/")
 async def root():
