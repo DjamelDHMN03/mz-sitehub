@@ -175,4 +175,3 @@ async def get_briefing(
         "contrats_a_expirer": contrats_expirant,
     }
 
-
