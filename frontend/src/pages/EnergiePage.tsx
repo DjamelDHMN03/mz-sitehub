@@ -156,6 +156,4 @@ export default function EnergiePage() {
         provisoire_actif: Boolean(form.provisoire_actif),
         provisoire_debut: toDateInput(form.provisoire_debut) || null,
         provisoire_fin: toDateInput(form.provisoire_fin) || null,
-        montant_mensuel: form.montant_mensuel === null ? null : Number(form.montant_mensuel),
-        necessite_extension: Boolean(form.necessite_extension),
-        aps_pret: Boolean(form.aps_pret),
+        montant_mensuel: form
