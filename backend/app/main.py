@@ -3,7 +3,10 @@ MZ BUILDING — point d'entrée backend FastAPI.
 """
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
@@ -91,4 +94,7 @@ app.include_router(energie.router)
 async def health() -> dict:
     return {"status": "ok", "service": "mz-building-backend", "version": "1.0.0"}
 
-
+@app.get("/health/db", tags=["system"])
+async def health_db(db: AsyncSession = Depends(get_db)) -> dict:
+    await db.execute(text("select 1"))
+    return {"status": "ok", "database": "ok"}
