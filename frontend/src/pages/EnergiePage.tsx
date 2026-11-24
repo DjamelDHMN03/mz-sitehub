@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Zap, Search, Save, PlusCircle, CheckCircle2, Clock } from "lucide-react";
-import api from "@/lib/api";
+import { api } from "@/lib/api";
 
 type ModeEnergie = "SONELGAZ" | "SOUS_COMPTAGE";
 
@@ -79,7 +79,7 @@ export default function EnergiePage() {
       setSites(data);
       const targetId = keepSiteId || selectedId || data[0]?.site_id || "";
       if (targetId) {
-        const found = data.find((s) => s.site_id === targetId) || data[0];
+        const found = data.find((s: SiteEnergie) => s.site_id === targetId) || data[0];
         if (found) {
           setSelectedId(found.site_id);
           setForm({ ...found });
@@ -424,147 +424,4 @@ export default function EnergiePage() {
                     </label>
                     <input
                       type="date"
-                      value={toDateInput(form.provisoire_debut)}
-                      onChange={(e) =>
-                        setForm({ ...form, provisoire_debut: e.target.value || null })
-                      }
-                      className="w-full rounded-mz-md border border-mz-border bg-mz-surface px-2.5 py-1.5 text-xs"
-                    />
-                    <input
-                      type="date"
-                      value={toDateInput(form.provisoire_fin)}
-                      onChange={(e) =>
-                        setForm({ ...form, provisoire_fin: e.target.value || null })
-                      }
-                      className="w-full rounded-mz-md border border-mz-border bg-mz-surface px-2.5 py-1.5 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-2 rounded-mz-md border border-mz-border bg-mz-bg p-3">
-                    <div className="text-xs font-semibold text-mz-text-muted">Dossier extension</div>
-                    {(
-                      [
-                        ["necessite_extension", "Nécessite extension"],
-                        ["aps_pret", "APS prêt"],
-                        ["plan_situation_pret", "Plan situation prêt"],
-                        ["demande_sonelgaz_prete", "Demande Sonelgaz prête"],
-                        ["sous_comptage_permanent", "Sous-comptage permanent"],
-                      ] as const
-                    ).map(([key, text]) => (
-                      <label key={key} className="flex items-center gap-2 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(form[key])}
-                          onChange={(e) =>
-                            setForm({ ...form, [key]: e.target.checked })
-                          }
-                        />
-                        {text}
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-col rounded-mz-md border border-mz-border bg-mz-bg p-3">
-                    <label className="text-xs font-semibold text-mz-text-muted">Observation</label>
-                    <textarea
-                      rows={6}
-                      value={form.observation ?? ""}
-                      onChange={(e) => setForm({ ...form, observation: e.target.value })}
-                      className="mt-2 flex-1 rounded-mz-md border border-mz-border bg-mz-surface p-2 text-xs"
-                    />
-                  </div>
-                </div>
-              </form>
-
-              <div className="space-y-4 rounded-mz-md border border-mz-border bg-mz-surface p-5">
-                <h3 className="text-base font-semibold">
-                  Paiements — {form.code_site}
-                </h3>
-
-                <form
-                  onSubmit={handleAddPaiement}
-                  className="grid grid-cols-1 gap-3 sm:grid-cols-5"
-                >
-                  <input
-                    type="date"
-                    value={mois}
-                    onChange={(e) => setMois(e.target.value)}
-                    required
-                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="date"
-                    value={datePaiement}
-                    onChange={(e) => setDatePaiement(e.target.value)}
-                    required
-                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="number"
-                    value={montant}
-                    onChange={(e) => setMontant(e.target.value)}
-                    required
-                    placeholder="Montant"
-                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={obsPaiement}
-                    onChange={(e) => setObsPaiement(e.target.value)}
-                    placeholder="Observation"
-                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingPaiement}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-mz-md bg-mz-primary px-3 py-2 text-sm font-medium text-white hover:opacity-95 disabled:opacity-50"
-                  >
-                    <PlusCircle size={16} />
-                    {savingPaiement ? "Ajout..." : "Ajouter"}
-                  </button>
-                </form>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-mz-border text-xs text-mz-text-muted">
-                        <th className="py-2 pr-3">Mois</th>
-                        <th className="py-2 pr-3">Date paiement</th>
-                        <th className="py-2 pr-3">Montant</th>
-                        <th className="py-2">Observation</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paiements.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="py-4 text-center text-xs text-mz-text-muted">
-                            Aucun paiement enregistré pour ce site.
-                          </td>
-                        </tr>
-                      ) : (
-                        paiements.map((p) => (
-                          <tr key={p.id} className="border-b border-mz-border/50">
-                            <td className="py-2 pr-3">{p.mois}</td>
-                            <td className="py-2 pr-3">{p.date_paiement}</td>
-                            <td className="py-2 pr-3 font-medium">
-                              {Number(p.montant).toLocaleString("fr-DZ")} DA
-                            </td>
-                            <td className="py-2 text-mz-text-muted">{p.observation || "-"}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-mz-md border border-mz-border bg-mz-surface p-6 text-sm text-mz-text-muted">
-              Sélectionnez un site dans la liste pour afficher sa fiche Énergie.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+                      value={toDateInput(form.provisoire_
