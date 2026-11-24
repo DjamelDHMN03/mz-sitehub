@@ -12,6 +12,7 @@ from app.routers import (
     docb_aps, contracts, tasks, share, excel_import, reports, audit,
     assistant, rag, geography, ooredoo_centre, users, stats, chat,
     site_visits,
+    energie,
 )
 
 logger = logging.getLogger("mz_building")
@@ -83,6 +84,7 @@ app.include_router(users.router)
 app.include_router(stats.router)
 app.include_router(chat.router)
 app.include_router(site_visits.router)
+app.include_router(energie.router)
 
 
 @app.get("/health", tags=["system"])
