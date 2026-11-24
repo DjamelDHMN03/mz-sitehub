@@ -1,57 +1,106 @@
-﻿import { useEffect, useState } from "react";
-import { Zap, FileDown, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Zap, Search, Save, PlusCircle, CheckCircle2, Clock } from "lucide-react";
+import api from "@/lib/api";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+type ModeEnergie = "SONELGAZ" | "SOUS_COMPTAGE";
 
 interface SiteEnergie {
+  site_id: string;
   code_site: string;
   nom_site: string;
-  adresse: string;
-  longitude: string;
-  latitude: string;
-  proprietaire: string;
-  mode_alimentation: "provisoire" | "sonelgaz";
-  loyer_mensuel_da: number;
-  mois_payes: number;
-  etude_faite: boolean;
+  adresse: string | null;
+  proprietaire: string | null;
+  longitude: number | string | null;
+  latitude: number | string | null;
+  mode: ModeEnergie;
+  demande_deposee: boolean;
+  demande_deposee_le: string | null;
+  etude_effectuee: boolean;
+  etude_effectuee_le: string | null;
   devis_paye: boolean;
-  branche: boolean;
+  devis_paye_le: string | null;
+  site_raccorde: boolean;
+  site_raccorde_le: string | null;
+  sous_comptage_permanent: boolean;
+  provisoire_actif: boolean;
+  provisoire_debut: string | null;
+  provisoire_fin: string | null;
+  montant_mensuel: number | null;
   necessite_extension: boolean;
   aps_pret: boolean;
   plan_situation_pret: boolean;
   demande_sonelgaz_prete: boolean;
+  observation: string | null;
 }
 
-const EMPTY_FORM: SiteEnergie = {
-  code_site: "",
-  nom_site: "",
-  adresse: "",
-  longitude: "",
-  latitude: "",
-  proprietaire: "",
-  mode_alimentation: "sonelgaz",
-  loyer_mensuel_da: 18000,
-  mois_payes: 0,
-  etude_faite: false,
-  devis_paye: false,
-  branche: false,
-  necessite_extension: false,
-  aps_pret: false,
-  plan_situation_pret: false,
-  demande_sonelgaz_prete: false,
-};
+interface PaiementEnergie {
+  id: string;
+  site_id: string;
+  mois: string;
+  date_paiement: string;
+  montant: number;
+  observation: string | null;
+  created_at?: string;
+}
+
+function toDateInput(val: string | null | undefined): string {
+  if (!val) return "";
+  return val.slice(0, 10);
+}
+
+function normalizeMois(val: string): string {
+  if (!val) return "";
+  return val.length === 7 ? `${val}-01` : val.slice(0, 10);
+}
 
 export default function EnergiePage() {
   const [sites, setSites] = useState<SiteEnergie[]>([]);
-  const [form, setForm] = useState<SiteEnergie>(EMPTY_FORM);
-  const [dateDemande, setDateDemande] = useState("……….");
-  const [loading, setLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [form, setForm] = useState<SiteEnergie | null>(null);
+  const [search, setSearch] = useState<string>("");
+  const [paiements, setPaiements] = useState<PaiementEnergie[]>([]);
 
-  async function chargerSites() {
-    const res = await fetch(`${API_BASE}/api/energie/sites`);
-    if (res.ok) {
-      const data = await res.json();
+  const [mois, setMois] = useState<string>("2026-11-01");
+  const [datePaiement, setDatePaiement] = useState<string>("2026-11-24");
+  const [montant, setMontant] = useState<string>("18000");
+  const [obsPaiement, setObsPaiement] = useState<string>("");
+
+  const [loadingSites, setLoadingSites] = useState<boolean>(false);
+  const [savingSite, setSavingSite] = useState<boolean>(false);
+  const [savingPaiement, setSavingPaiement] = useState<boolean>(false);
+  const [statusMsg, setStatusMsg] = useState<string>("");
+  const [errorMsg, setErrorMsg] = useState<string>("");
+
+  async function chargerSites(keepSiteId?: string) {
+    setLoadingSites(true);
+    setErrorMsg("");
+    try {
+      const { data } = await api.get<SiteEnergie[]>("/api/energie/sites");
       setSites(data);
+      const targetId = keepSiteId || selectedId || data[0]?.site_id || "";
+      if (targetId) {
+        const found = data.find((s) => s.site_id === targetId) || data[0];
+        if (found) {
+          setSelectedId(found.site_id);
+          setForm({ ...found });
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.detail || "Erreur chargement des sites énergie.");
+    } finally {
+      setLoadingSites(false);
+    }
+  }
+
+  async function chargerPaiements(siteId: string) {
+    if (!siteId) return;
+    try {
+      const { data } = await api.get<PaiementEnergie[]>(
+        `/api/energie/sites/${encodeURIComponent(siteId)}/paiements`
+      );
+      setPaiements(data);
+    } catch {
+      setPaiements([]);
     }
   }
 
@@ -59,44 +108,102 @@ export default function EnergiePage() {
     chargerSites();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (selectedId) {
+      const found = sites.find((s) => s.site_id === selectedId);
+      if (found) setForm({ ...found });
+      chargerPaiements(selectedId);
+    }
+  }, [selectedId]);
+
+  const filteredSites = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sites;
+    return sites.filter(
+      (s) =>
+        (s.code_site || "").toLowerCase().includes(q) ||
+        (s.nom_site || "").toLowerCase().includes(q) ||
+        (s.adresse || "").toLowerCase().includes(q)
+    );
+  }, [sites, search]);
+
+  const stats = useMemo(() => {
+    const provisoires = sites.filter((s) => s.provisoire_actif).length;
+    const raccordes = sites.filter((s) => s.site_raccorde).length;
+    const extensions = sites.filter((s) => s.necessite_extension && !s.site_raccorde).length;
+    const chargeMensuelle = sites.reduce((acc, s) => acc + (Number(s.montant_mensuel) || 0), 0);
+    return { provisoires, raccordes, extensions, chargeMensuelle };
+  }, [sites]);
+
+  async function handleSaveSite(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    if (!form) return;
+    setSavingSite(true);
+    setStatusMsg("");
+    setErrorMsg("");
     try {
-      const res = await fetch(`${API_BASE}/api/energie/sites`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, loyer_mensuel_da: 18000 }),
-      });
-      if (res.ok) {
-        setForm(EMPTY_FORM);
-        await chargerSites();
-      }
+      const payload = {
+        mode: form.mode,
+        demande_deposee: Boolean(form.demande_deposee),
+        demande_deposee_le: toDateInput(form.demande_deposee_le) || null,
+        etude_effectuee: Boolean(form.etude_effectuee),
+        etude_effectuee_le: toDateInput(form.etude_effectuee_le) || null,
+        devis_paye: Boolean(form.devis_paye),
+        devis_paye_le: toDateInput(form.devis_paye_le) || null,
+        site_raccorde: Boolean(form.site_raccorde),
+        site_raccorde_le: toDateInput(form.site_raccorde_le) || null,
+        sous_comptage_permanent: Boolean(form.sous_comptage_permanent),
+        provisoire_actif: Boolean(form.provisoire_actif),
+        provisoire_debut: toDateInput(form.provisoire_debut) || null,
+        provisoire_fin: toDateInput(form.provisoire_fin) || null,
+        montant_mensuel: form.montant_mensuel === null ? null : Number(form.montant_mensuel),
+        necessite_extension: Boolean(form.necessite_extension),
+        aps_pret: Boolean(form.aps_pret),
+        plan_situation_pret: Boolean(form.plan_situation_pret),
+        demande_sonelgaz_prete: Boolean(form.demande_sonelgaz_prete),
+        observation: form.observation?.trim() ? form.observation : null,
+      };
+
+      const { data: updated } = await api.put<SiteEnergie>(
+        `/api/energie/sites/${encodeURIComponent(form.site_id)}`,
+        payload
+      );
+      setSites((prev) => prev.map((s) => (s.site_id === updated.site_id ? updated : s)));
+      setForm({ ...updated });
+      setStatusMsg(`Site ${updated.code_site} mis à jour.`);
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.detail || "Échec de la mise à jour du site.");
     } finally {
-      setLoading(false);
+      setSavingSite(false);
     }
   }
 
-  async function handleGenererDoc(codeSite: string) {
-    const url = `${API_BASE}/api/energie/sites/${encodeURIComponent(
-      codeSite
-    )}/generer-demande?date_demande=${encodeURIComponent(dateDemande)}`;
-    const res = await fetch(url, { method: "POST" });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const dlUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = dlUrl;
-    a.download = `Demande_Sonelgaz_${codeSite.replace(/\s+/g, "_")}.docx`;
-    a.click();
-    window.URL.revokeObjectURL(dlUrl);
-    await chargerSites();
+  async function handleAddPaiement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedId) return;
+    setSavingPaiement(true);
+    setStatusMsg("");
+    setErrorMsg("");
+    try {
+      const payload = {
+        mois: normalizeMois(mois),
+        date_paiement: toDateInput(datePaiement),
+        montant: Number(montant),
+        observation: obsPaiement.trim() ? obsPaiement.trim() : null,
+      };
+      await api.post(
+        `/api/energie/sites/${encodeURIComponent(selectedId)}/paiements`,
+        payload
+      );
+      setObsPaiement("");
+      await chargerPaiements(selectedId);
+      setStatusMsg("Paiement enregistré.");
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.detail || "Échec de l'ajout du paiement.");
+    } finally {
+      setSavingPaiement(false);
+    }
   }
-
-  const sitesProvisoires = sites.filter((s) => s.mode_alimentation === "provisoire");
-  const chargeMensuelleProv = sitesProvisoires.length * 18000;
-  const sitesBranches = sites.filter((s) => s.branche).length;
-  const extensionsActives = sites.filter((s) => s.necessite_extension && !s.branche).length;
 
   return (
     <div className="space-y-6 p-6 text-mz-text">
@@ -107,244 +214,356 @@ export default function EnergiePage() {
             Énergie &amp; Raccordement Sonelgaz
           </h1>
           <p className="text-sm text-mz-text-muted">
-            Branchement provisoire (18 000 DA/mois), raccordement Sonelgaz et dossiers d&apos;extension.
+            Suivi des raccordements, branchements provisoires, extensions et paiements mensuels.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-mz-text-muted">Date après &laquo; Alger, le &raquo; :</label>
-          <input
-            value={dateDemande}
-            onChange={(e) => setDateDemande(e.target.value)}
-            className="rounded-mz-md border border-mz-border bg-mz-surface px-3 py-1.5 text-sm"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => chargerSites(selectedId)}
+          disabled={loadingSites}
+          className="rounded-mz-md border border-mz-border bg-mz-surface px-3 py-1.5 text-sm hover:opacity-90"
+        >
+          {loadingSites ? "Actualisation..." : "Actualiser"}
+        </button>
       </div>
+
+      {statusMsg && (
+        <div className="rounded-mz-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
+          {statusMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="rounded-mz-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          {errorMsg}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-mz-md border border-mz-border bg-mz-surface p-4">
-          <p className="text-xs text-mz-text-muted">Sites suivis</p>
-          <p className="mt-1 text-2xl font-bold">{sites.length}</p>
+          <div className="text-xs text-mz-text-muted">Sites suivis</div>
+          <div className="mt-1 text-2xl font-semibold">{sites.length}</div>
         </div>
         <div className="rounded-mz-md border border-mz-border bg-mz-surface p-4">
-          <p className="text-xs text-mz-text-muted">Provisoire (18 000 DA/mois)</p>
-          <p className="mt-1 text-2xl font-bold">
-            {sitesProvisoires.length}{" "}
-            <span className="text-sm font-normal text-mz-text-muted">
-              ({chargeMensuelleProv.toLocaleString("fr-FR")} DA/mois)
-            </span>
-          </p>
+          <div className="text-xs text-mz-text-muted">Provisoires actifs</div>
+          <div className="mt-1 text-2xl font-semibold">{stats.provisoires}</div>
         </div>
         <div className="rounded-mz-md border border-mz-border bg-mz-surface p-4">
-          <p className="text-xs text-mz-text-muted">Branchés Sonelgaz</p>
-          <p className="mt-1 text-2xl font-bold">{sitesBranches}</p>
+          <div className="text-xs text-mz-text-muted">Sites raccordés</div>
+          <div className="mt-1 text-2xl font-semibold">{stats.raccordes}</div>
         </div>
         <div className="rounded-mz-md border border-mz-border bg-mz-surface p-4">
-          <p className="text-xs text-mz-text-muted">Extensions en cours</p>
-          <p className="mt-1 text-2xl font-bold">{extensionsActives}</p>
+          <div className="text-xs text-mz-text-muted">Charge mensuelle cumulée</div>
+          <div className="mt-1 text-2xl font-semibold">
+            {stats.chargeMensuelle.toLocaleString("fr-DZ")} DA
+          </div>
         </div>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 gap-3 rounded-mz-md border border-mz-border bg-mz-surface p-4 md:grid-cols-3"
-      >
-        <input
-          required
-          placeholder="Code site (ex: AL2238 A)"
-          value={form.code_site}
-          onChange={(e) => setForm({ ...form, code_site: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
-        <input
-          required
-          placeholder="Nom du site (ex: KOURIFFA)"
-          value={form.nom_site}
-          onChange={(e) => setForm({ ...form, nom_site: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
-        <input
-          required
-          placeholder="Propriétaire (ex: Domaines)"
-          value={form.proprietaire}
-          onChange={(e) => setForm({ ...form, proprietaire: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
-        <input
-          required
-          placeholder="Adresse complète"
-          value={form.adresse}
-          onChange={(e) => setForm({ ...form, adresse: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm md:col-span-2"
-        />
-        <select
-          value={form.mode_alimentation}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              mode_alimentation: e.target.value as "provisoire" | "sonelgaz",
-            })
-          }
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        >
-          <option value="sonelgaz">Raccordement Sonelgaz</option>
-          <option value="provisoire">Branchement provisoire (18 000 DA/mois)</option>
-        </select>
-        <input
-          required
-          placeholder="Longitude (ex: 3.141391)"
-          value={form.longitude}
-          onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
-        <input
-          required
-          placeholder="Latitude (ex: 36.704134)"
-          value={form.latitude}
-          onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
-        <input
-          type="number"
-          min={0}
-          placeholder="Mois provisoires payés"
-          value={form.mois_payes}
-          onChange={(e) =>
-            setForm({ ...form, mois_payes: parseInt(e.target.value || "0", 10) })
-          }
-          className="rounded-mz-md border border-mz-border bg-mz-surface-2 px-3 py-2 text-sm"
-        />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="space-y-3 rounded-mz-md border border-mz-border bg-mz-surface p-4 lg:col-span-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-mz-text-muted" size={16} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher code, nom, adresse..."
+              className="w-full rounded-mz-md border border-mz-border bg-mz-bg py-2 pl-9 pr-3 text-sm"
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-4 text-sm md:col-span-3">
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.etude_faite}
-              onChange={(e) => setForm({ ...form, etude_faite: e.target.checked })}
-            />
-            Étude faite
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.devis_paye}
-              onChange={(e) => setForm({ ...form, devis_paye: e.target.checked })}
-            />
-            Devis payé
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.branche}
-              onChange={(e) => setForm({ ...form, branche: e.target.checked })}
-            />
-            Branché
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.necessite_extension}
-              onChange={(e) =>
-                setForm({ ...form, necessite_extension: e.target.checked })
-              }
-            />
-            Nécessite extension
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.aps_pret}
-              onChange={(e) => setForm({ ...form, aps_pret: e.target.checked })}
-            />
-            APS prêt
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={form.plan_situation_pret}
-              onChange={(e) =>
-                setForm({ ...form, plan_situation_pret: e.target.checked })
-              }
-            />
-            Plan de situation prêt
-          </label>
-          <button
-            type="submit"
-            disabled={loading}
-            className="ml-auto rounded-mz-md bg-mz-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            {loading ? "Enregistrement..." : "Enregistrer / Mettre à jour"}
-          </button>
-        </div>
-      </form>
-
-      <div className="overflow-x-auto rounded-mz-md border border-mz-border bg-mz-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-mz-border bg-mz-surface-2 text-xs text-mz-text-muted">
-            <tr>
-              <th className="p-3">Site</th>
-              <th className="p-3">Alimentation</th>
-              <th className="p-3">Sonelgaz</th>
-              <th className="p-3">Extension (APS / Plan / Demande)</th>
-              <th className="p-3">Document</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-mz-border">
-            {sites.map((s) => (
-              <tr key={s.code_site}>
-                <td className="p-3">
-                  <div className="font-semibold">
-                    {s.code_site} — {s.nom_site}
-                  </div>
-                  <div className="text-xs text-mz-text-muted">{s.adresse}</div>
-                </td>
-                <td className="p-3">
-                  {s.mode_alimentation === "provisoire" ? (
-                    <div>
-                      <span className="font-medium text-amber-400">Provisoire</span> — 18 000 DA/mois
-                      <div className="text-xs text-mz-text-muted">
-                        {s.mois_payes} mois payés ({(s.mois_payes * 18000).toLocaleString("fr-FR")} DA)
-                      </div>
-                    </div>
-                  ) : (
-                    <span>Raccordement Sonelgaz ({s.proprietaire})</span>
-                  )}
-                </td>
-                <td className="p-3">
-                  {s.branche ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-400">
-                      <CheckCircle2 size={15} /> Branché
+          <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
+            {filteredSites.map((s) => {
+              const active = s.site_id === selectedId;
+              return (
+                <button
+                  key={s.site_id}
+                  type="button"
+                  onClick={() => setSelectedId(s.site_id)}
+                  className={`w-full rounded-mz-md border p-3 text-left transition ${
+                    active
+                      ? "border-mz-primary bg-mz-primary/10"
+                      : "border-mz-border bg-mz-bg hover:border-mz-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">{s.code_site}</span>
+                    <span className="rounded bg-mz-surface px-2 py-0.5 text-xs">
+                      {s.mode}
                     </span>
-                  ) : (
-                    <div className="space-y-0.5 text-xs">
-                      <div>Étude faite : {s.etude_faite ? "Oui" : "Non"}</div>
-                      <div>Devis payé : {s.devis_paye ? "Oui" : "Non"}</div>
+                  </div>
+                  <div className="mt-0.5 text-sm font-medium">{s.nom_site}</div>
+                  {s.adresse && (
+                    <div className="mt-0.5 truncate text-xs text-mz-text-muted">
+                      {s.adresse}
                     </div>
                   )}
-                </td>
-                <td className="p-3 text-xs">
-                  {!s.necessite_extension ? (
-                    <span className="text-mz-text-muted">Non requise</span>
-                  ) : (
-                    <div className="space-y-0.5">
-                      <div>APS : {s.aps_pret ? "Prêt" : "Manquant"}</div>
-                      <div>Plan de situation : {s.plan_situation_pret ? "Prêt" : "Manquant"}</div>
-                      <div>Demande Sonelgaz : {s.demande_sonelgaz_prete ? "Prête" : "À générer"}</div>
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
+                  <div className="mt-2 flex items-center justify-between text-xs text-mz-text-muted">
+                    <span>
+                      {(Number(s.montant_mensuel) || 0).toLocaleString("fr-DZ")} DA/mois
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      {s.site_raccorde ? (
+                        <>
+                          <CheckCircle2 size={13} className="text-emerald-400" /> Raccordé
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={13} className="text-amber-400" /> En cours
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-6 lg:col-span-8">
+          {form ? (
+            <>
+              <form
+                onSubmit={handleSaveSite}
+                className="space-y-5 rounded-mz-md border border-mz-border bg-mz-surface p-5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-mz-border pb-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">
+                      {form.code_site} — {form.nom_site}
+                    </h2>
+                    <p className="text-xs text-mz-text-muted">
+                      {form.adresse || "Adresse non renseignée"}
+                    </p>
+                  </div>
                   <button
-                    type="button"
-                    onClick={() => handleGenererDoc(s.code_site)}
-                    className="inline-flex items-center gap-1.5 rounded-mz-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                    type="submit"
+                    disabled={savingSite}
+                    className="inline-flex items-center gap-2 rounded-mz-md bg-mz-primary px-4 py-2 text-sm font-medium text-white hover:opacity-95 disabled:opacity-50"
                   >
-                    <FileDown size={14} /> Demande (.docx)
+                    <Save size={16} />
+                    {savingSite ? "Enregistrement..." : "Enregistrer le site"}
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-mz-text-muted">Mode d&apos;alimentation</label>
+                    <select
+                      value={form.mode}
+                      onChange={(e) =>
+                        setForm({ ...form, mode: e.target.value as ModeEnergie })
+                      }
+                      className="mt-1 w-full rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                    >
+                      <option value="SONELGAZ">SONELGAZ</option>
+                      <option value="SOUS_COMPTAGE">SOUS_COMPTAGE</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-mz-text-muted">Montant mensuel (DA)</label>
+                    <input
+                      type="number"
+                      value={form.montant_mensuel ?? ""}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          montant_mensuel: e.target.value === "" ? null : Number(e.target.value),
+                        })
+                      }
+                      className="mt-1 w-full rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {(
+                    [
+                      ["demande_deposee", "demande_deposee_le", "Demande déposée"],
+                      ["etude_effectuee", "etude_effectuee_le", "Étude effectuée"],
+                      ["devis_paye", "devis_paye_le", "Devis payé"],
+                      ["site_raccorde", "site_raccorde_le", "Site raccordé"],
+                    ] as const
+                  ).map(([flagKey, dateKey, label]) => (
+                    <div
+                      key={flagKey}
+                      className="space-y-2 rounded-mz-md border border-mz-border bg-mz-bg p-3"
+                    >
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form[flagKey])}
+                          onChange={(e) =>
+                            setForm({ ...form, [flagKey]: e.target.checked })
+                          }
+                        />
+                        {label}
+                      </label>
+                      <input
+                        type="date"
+                        value={toDateInput(form[dateKey])}
+                        onChange={(e) =>
+                          setForm({ ...form, [dateKey]: e.target.value || null })
+                        }
+                        className="w-full rounded-mz-md border border-mz-border bg-mz-surface px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="space-y-2 rounded-mz-md border border-mz-border bg-mz-bg p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.provisoire_actif)}
+                        onChange={(e) =>
+                          setForm({ ...form, provisoire_actif: e.target.checked })
+                        }
+                      />
+                      Provisoire actif
+                    </label>
+                    <input
+                      type="date"
+                      value={toDateInput(form.provisoire_debut)}
+                      onChange={(e) =>
+                        setForm({ ...form, provisoire_debut: e.target.value || null })
+                      }
+                      className="w-full rounded-mz-md border border-mz-border bg-mz-surface px-2.5 py-1.5 text-xs"
+                    />
+                    <input
+                      type="date"
+                      value={toDateInput(form.provisoire_fin)}
+                      onChange={(e) =>
+                        setForm({ ...form, provisoire_fin: e.target.value || null })
+                      }
+                      className="w-full rounded-mz-md border border-mz-border bg-mz-surface px-2.5 py-1.5 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-2 rounded-mz-md border border-mz-border bg-mz-bg p-3">
+                    <div className="text-xs font-semibold text-mz-text-muted">Dossier extension</div>
+                    {(
+                      [
+                        ["necessite_extension", "Nécessite extension"],
+                        ["aps_pret", "APS prêt"],
+                        ["plan_situation_pret", "Plan situation prêt"],
+                        ["demande_sonelgaz_prete", "Demande Sonelgaz prête"],
+                        ["sous_comptage_permanent", "Sous-comptage permanent"],
+                      ] as const
+                    ).map(([key, text]) => (
+                      <label key={key} className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form[key])}
+                          onChange={(e) =>
+                            setForm({ ...form, [key]: e.target.checked })
+                          }
+                        />
+                        {text}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col rounded-mz-md border border-mz-border bg-mz-bg p-3">
+                    <label className="text-xs font-semibold text-mz-text-muted">Observation</label>
+                    <textarea
+                      rows={6}
+                      value={form.observation ?? ""}
+                      onChange={(e) => setForm({ ...form, observation: e.target.value })}
+                      className="mt-2 flex-1 rounded-mz-md border border-mz-border bg-mz-surface p-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </form>
+
+              <div className="space-y-4 rounded-mz-md border border-mz-border bg-mz-surface p-5">
+                <h3 className="text-base font-semibold">
+                  Paiements — {form.code_site}
+                </h3>
+
+                <form
+                  onSubmit={handleAddPaiement}
+                  className="grid grid-cols-1 gap-3 sm:grid-cols-5"
+                >
+                  <input
+                    type="date"
+                    value={mois}
+                    onChange={(e) => setMois(e.target.value)}
+                    required
+                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="date"
+                    value={datePaiement}
+                    onChange={(e) => setDatePaiement(e.target.value)}
+                    required
+                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={montant}
+                    onChange={(e) => setMontant(e.target.value)}
+                    required
+                    placeholder="Montant"
+                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={obsPaiement}
+                    onChange={(e) => setObsPaiement(e.target.value)}
+                    placeholder="Observation"
+                    className="rounded-mz-md border border-mz-border bg-mz-bg px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingPaiement}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-mz-md bg-mz-primary px-3 py-2 text-sm font-medium text-white hover:opacity-95 disabled:opacity-50"
+                  >
+                    <PlusCircle size={16} />
+                    {savingPaiement ? "Ajout..." : "Ajouter"}
+                  </button>
+                </form>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-mz-border text-xs text-mz-text-muted">
+                        <th className="py-2 pr-3">Mois</th>
+                        <th className="py-2 pr-3">Date paiement</th>
+                        <th className="py-2 pr-3">Montant</th>
+                        <th className="py-2">Observation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paiements.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-4 text-center text-xs text-mz-text-muted">
+                            Aucun paiement enregistré pour ce site.
+                          </td>
+                        </tr>
+                      ) : (
+                        paiements.map((p) => (
+                          <tr key={p.id} className="border-b border-mz-border/50">
+                            <td className="py-2 pr-3">{p.mois}</td>
+                            <td className="py-2 pr-3">{p.date_paiement}</td>
+                            <td className="py-2 pr-3 font-medium">
+                              {Number(p.montant).toLocaleString("fr-DZ")} DA
+                            </td>
+                            <td className="py-2 text-mz-text-muted">{p.observation || "-"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-mz-md border border-mz-border bg-mz-surface p-6 text-sm text-mz-text-muted">
+              Sélectionnez un site dans la liste pour afficher sa fiche Énergie.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
